@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Aplicativo</title>
+    <script src= "http://localhost:3000/socket.io/socket.io.js" ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script> 
+    <link rel='stylesheet' href='./style.css'>
+</head>
+<body>
+    <div id='login'>
+        <form id='loginAction'>
+            <input type='text' name='email' placeholder="Digite seu email">
+            <input type="password" name='senha' placeholder="Digite sua senha">
+            <button>Entrar</button>
+            <p1>Se registre clicando <a>aqui</a></p1>
+        </form>
+    </div>
+
+    <form id='chat'>
+        <div class="messages"></div>
+        <div id='communicationArea'>
+            <input id='message' type='text' name='message' placeholder="Digite sua mensagem" autocomplete="off">
+        </div>
+        <button type="submit">Enviar</button>
+    </form>
+    <script type='text/javascript'>
+        let socket = io('http://localhost:3000', {transports: ['websocket', 'polling', 'flashsocket']});
+        let nick;
+        let user_id;
+        function isYoutubeVideo(url) {
+        let v = /^(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
+        return (url.match(v)) ? RegExp.$1 : false;
+        };
+
+        function renderMessage(message) {
+            $('.messages').append('<div class="message"><strong>' + message.nick + '</strong>: ' + message.message + '</div>');
+        };
+
+        socket.on('reloadMessages', (messagesDb)=> {
+            for (let i = 0; i < messagesDb.length; i++) {
+                $('.messages').append('<div class="message"><strong>' + messagesDb[i].nick + '</strong>: ' + messagesDb[i].message + '</div>');
+            };
+        });
+
+        socket.on('receiveMessage', function(message){
+            renderMessage(message);
+        });
+
+        // socket.on('newConnection', (data)=> {
+        //     $('.messages').append('<div id="newMember">Um usuário entrou no chat</div>');
+        // });
+
+        socket.on('userDisconnect', (data)=> {
+            $('.messages').append('<div id="newMember">Um usuário desconectou</div>');
+        });
+
+        $('#chat').submit(function(event) {
+            event.preventDefault();
+
+            let message = $('input[name=message]').val();
+
+            let youtubeVideo = isYoutubeVideo(message);
+
+            if(youtubeVideo != false) {
+                message = `<iframe width="560" height="315" src='https://www.youtube.com/embed/${youtubeVideo}'></iframe>`
+            };
+
+            if(message.length) {
+
+                let messageObj = {
+                    user_id: user_id,
+                    nick: nick,
+                    message: message,
+                };
+
+                renderMessage(messageObj);
+
+                socket.emit('sendMessage', messageObj);
+                $('#message').val('');
+            };
+        });
+
+        $('#loginAction').submit(function(event) {
+            event.preventDefault();
+            $.ajax({
+                method: "POST",
+                url: "http://localhost:3000/login",
+                data: {
+                    email: $('input[name=email]').val(),
+                    senha: $('input[name=senha]').val()
+                },
+            })
+            .done(function(data) {
+                document.querySelector('#loginAction').remove();
+                $('#login').append('Logado como ' + data.nick);
+                user_id = data.user_id;
+                nick = data.nick;
+            }).fail(function(err) {
+                console.log("error: " + err);
+            });
+        });
+
+    </script>
+</body>
+</html>

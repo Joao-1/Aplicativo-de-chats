@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.example
+server.js
+style.css
+test.html
+index.html
+src/database/config/config.json
